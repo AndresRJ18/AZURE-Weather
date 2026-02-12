@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Azure Weather Dashboard</title>
+
+  <!-- Tailwind CSS (Play CDN – no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            sky: {
+              950: '#04111f',
+            },
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.4s ease forwards',
+            'spin-slow': 'spin 3s linear infinite',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%':   { opacity: '0', transform: 'translateY(16px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Custom scrollbar ───────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    /* ── Forecast card stagger animation ─────────────────────────────────── */
+    .forecast-card:nth-child(1) { animation-delay: .05s; }
+    .forecast-card:nth-child(2) { animation-delay: .10s; }
+    .forecast-card:nth-child(3) { animation-delay: .15s; }
+    .forecast-card:nth-child(4) { animation-delay: .20s; }
+    .forecast-card:nth-child(5) { animation-delay: .25s; }
+
+    /* ── Glass card ─────────────────────────────────────────────────────────── */
+    .glass {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+    }
+    .glass-light {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    /* ── Gradient background ────────────────────────────────────────────────── */
+    .bg-scene-dark {
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(14, 165, 233, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 100%, rgba(99, 102, 241, 0.14) 0%, transparent 55%),
+        #04111f;
+    }
+    .bg-scene-light {
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(125, 211, 252, 0.35) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 100%, rgba(199, 210, 254, 0.30) 0%, transparent 55%),
+        #f0f9ff;
+    }
+
+    /* ── Toggle pill ────────────────────────────────────────────────────────── */
+    .toggle-pill { transition: background .25s; }
+    .toggle-dot  { transition: transform .25s; }
+  </style>
+</head>
+
+<body id="body"
+  class="min-h-screen font-display transition-colors duration-300 bg-scene-dark text-slate-100">
+
+  <!-- ═══════════════════════════════ HEADER ══════════════════════════════════ -->
+  <header class="flex items-center justify-between px-6 py-5 max-w-4xl mx-auto">
+    <div class="flex items-center gap-2.5">
+      <!-- Cloud icon (inline SVG, no deps) -->
+      <svg class="w-7 h-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+      </svg>
+      <span class="font-semibold tracking-tight text-lg dark:text-white text-slate-800">
+        Azure <span class="text-sky-400">Weather</span>
+      </span>
+    </div>
+
+    <!-- Dark / Light toggle -->
+    <button id="themeToggle" aria-label="Toggle dark mode"
+      class="flex items-center gap-2 text-xs font-medium dark:text-slate-400 text-slate-500 hover:text-sky-400 transition-colors">
+      <span id="themeLabel" class="hidden sm:inline">Light mode</span>
+      <div class="toggle-pill relative w-10 h-5 rounded-full dark:bg-sky-600 bg-slate-300">
+        <div class="toggle-dot absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow dark:translate-x-5 translate-x-0"></div>
+      </div>
+    </button>
+  </header>
+
+  <!-- ═══════════════════════════════ MAIN ════════════════════════════════════ -->
+  <main class="max-w-4xl mx-auto px-6 pb-16 space-y-8">
+
+    <!-- Search bar -->
+    <section class="flex flex-col items-center gap-4 pt-4">
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-center
+                 dark:text-white text-slate-800">
+        Weather at a glance
+      </h1>
+      <p class="text-sm dark:text-slate-400 text-slate-500 text-center">
+        Powered by Azure Functions &amp; OpenWeatherMap
+      </p>
+
+      <div class="flex w-full max-w-md gap-2 mt-2">
+        <input
+          id="cityInput"
+          type="text"
+          placeholder="London, Tokyo, New York…"
+          autocomplete="off"
+          class="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium
+                 dark:bg-slate-800/70 bg-white/80
+                 dark:border-slate-700 border border-slate-200
+                 dark:text-white text-slate-800
+                 dark:placeholder-slate-500 placeholder-slate-400
+                 focus:outline-none focus:ring-2 focus:ring-sky-400
+                 transition" />
+        <button
+          id="searchBtn"
+          class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-sky-500
+                 hover:bg-sky-400 active:scale-95 text-white
+                 transition-all duration-150 shadow-lg shadow-sky-900/30
+                 disabled:opacity-50 disabled:cursor-not-allowed">
+          Search
+        </button>
+      </div>
+
+      <!-- Error message -->
+      <div id="errorMsg" class="hidden text-sm text-red-400 font-medium text-center
+                                 px-4 py-2 rounded-lg bg-red-900/20 border border-red-800/40 w-full max-w-md">
+      </div>
+    </section>
+
+    <!-- Loading spinner -->
+    <div id="loader" class="hidden flex justify-center pt-8">
+      <div class="w-10 h-10 rounded-full border-2 border-slate-700
+                  border-t-sky-400 animate-spin-slow"></div>
+    </div>
+
+    <!-- ── Current weather ────────────────────────────────────────────────── -->
+    <section id="currentCard" class="hidden animate-fade-up">
+      <div class="glass dark:glass rounded-2xl p-6 sm:p-8
+                  dark:text-white text-slate-800">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <!-- City + description -->
+          <div>
+            <p class="text-xs font-mono uppercase tracking-widest dark:text-sky-400 text-sky-600 mb-1">
+              Current conditions
+            </p>
+            <h2 id="cityName" class="text-3xl font-bold"></h2>
+            <p id="currentDesc" class="text-sm dark:text-slate-400 text-slate-500 mt-0.5"></p>
+          </div>
+          <!-- Temp + icon -->
+          <div class="flex items-center gap-3">
+            <img id="currentIcon" src="" alt="" class="w-16 h-16" />
+            <span id="currentTemp" class="text-6xl font-bold tabular-nums tracking-tighter"></span>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="grid grid-cols-3 gap-4 mt-6 pt-6
+                    border-t dark:border-slate-700/60 border-slate-200/60">
+          <div class="text-center">
+            <p class="text-xs dark:text-slate-500 text-slate-400 uppercase tracking-wide">Feels like</p>
+            <p id="feelsLike" class="text-xl font-semibold mt-1"></p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs dark:text-slate-500 text-slate-400 uppercase tracking-wide">Humidity</p>
+            <p id="humidity" class="text-xl font-semibold mt-1"></p>
+          </div>
+          <div class="text-center">
+            <p class="text-xs dark:text-slate-500 text-slate-400 uppercase tracking-wide">Wind</p>
+            <p id="wind" class="text-xl font-semibold mt-1"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 5-day forecast ─────────────────────────────────────────────────── -->
+    <section id="forecastSection" class="hidden">
+      <p class="text-xs font-mono uppercase tracking-widest dark:text-sky-400 text-sky-600 mb-3">
+        5-day forecast
+      </p>
+      <div id="forecastGrid"
+        class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <!-- Cards injected by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════ FOOTER ══════════════════════════════════ -->
+  <footer class="text-center text-xs dark:text-slate-600 text-slate-400 pb-6 font-mono">
+    Built with Azure Functions · OpenWeatherMap · Tailwind CSS
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

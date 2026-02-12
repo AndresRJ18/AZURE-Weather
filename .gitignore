@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+.env
+
+# Azure Functions
+local.settings.json
+.vscode/
+.funcignore
+bin/
+obj/
+.python_packages/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (si usas npm en el futuro)
+node_modules/

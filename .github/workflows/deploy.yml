@@ -1,0 +1,71 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Azure Weather Dashboard — CI/CD
+#
+# Triggers on push to `main`.
+# Jobs:
+#   1. deploy-backend  → Azure Functions (Python)
+#   2. deploy-frontend → Azure Static Web Apps
+#
+# Required GitHub Secrets:
+#   AZURE_FUNCTIONAPP_PUBLISH_PROFILE  — download from Azure Portal > Function App
+#   AZURE_STATIC_WEB_APPS_API_TOKEN    — shown during SWA creation or in Portal
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FUNCTION_APP_NAME: azure-weather-fn       # ← change to your Function App name
+  PYTHON_VERSION:    "3.12"
+
+# ── Job 1: Backend ────────────────────────────────────────────────────────────
+jobs:
+  deploy-backend:
+    name: Deploy Azure Function
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name:       ${{ env.FUNCTION_APP_NAME }}
+          package:        backend
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: true
+
+# ── Job 2: Frontend ───────────────────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Static Web App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token:     ${{ secrets.GITHUB_TOKEN }}
+          action:         upload
+          app_location:   frontend          # root of static files
+          api_location:   ""                # API handled by linked Function App
+          output_location: ""               # no build step (Tailwind CDN)

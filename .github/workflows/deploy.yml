@@ -49,7 +49,6 @@ jobs:
           app-name:       ${{ env.FUNCTION_APP_NAME }}
           package:        backend
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          scm-do-build-during-deployment: true
 
 # ── Job 2: Frontend ───────────────────────────────────────────────────────────
   deploy-frontend:

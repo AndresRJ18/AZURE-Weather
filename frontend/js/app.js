@@ -28,7 +28,7 @@ const humidity      = document.getElementById("humidity");
 const wind          = document.getElementById("wind");
 
 // ── API endpoint (relative → works locally and on SWA) ───────────────────────
-const API_BASE = "/api/weather";
+const API_BASE = "https://azure-weather-fn.azurewebsites.net/api/weather";
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
 function applyTheme(dark) {
